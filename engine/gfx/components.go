@@ -10,6 +10,7 @@ type Transform struct {
 
 type Sprite struct {
     Img *ebiten.Image
+    Scale float64 // 1.0 = 100%, 0.5 = half-size, etc.
 }
 
 type Camera struct {

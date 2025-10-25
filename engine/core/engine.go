@@ -1,63 +1,52 @@
 package core
 
 import (
-    "time"
-
-    "github.com/hajimehoshi/ebiten/v2"
-    "rp-go-v2-physics-integrated/engine/ecs"
-    "rp-go-v2-physics-integrated/engine/event"
+	"github.com/hajimehoshi/ebiten/v2"
+	"rp-go-v2-physics-integrated/engine/ecs"
+    	"rp-go-v2-physics-integrated/engine/gfx"
+    	"rp-go-v2-physics-integrated/engine/physics"
 )
 
+// Engine is the central orchestrator for all systems and the ECS world.
 type Engine struct {
-    bus        *event.EventBus
-    systems    []System
-    frameDelta time.Duration
-    World      *ecs.World
+	world         *ecs.World
+	renderSystem  *gfx.RenderSystem
+	physicsSystem *physics.MovementSystem
 }
 
-type System interface {
-    Init(*Engine)
-    Update(dt time.Duration)
-    Shutdown()
+// NewEngine initializes the ECS world and registers core systems.
+func NewEngine() *Engine {
+	world := ecs.NewWorld()
+
+	engine := &Engine{
+		world: world,
+	}
+
+	// Initialize and register systems
+	engine.physicsSystem = physics.NewMovementSystem(world)
+	engine.renderSystem = gfx.NewRenderSystem(world)
+
+	world.RegisterSystem(engine.physicsSystem)
+	world.RegisterSystem(engine.renderSystem)
+
+	return engine
 }
 
-func New() *Engine {
-    return &Engine{
-        bus:   event.NewEventBus(),
-        World: ecs.NewWorld(),
-    }
+// Update advances the game state — called once per frame by Ebiten.
+func (e *Engine) Update() error {
+	// Update all ECS systems (physics, logic, etc.)
+	e.world.Update(1.0 / 60.0) // fixed timestep for simplicity
+	return nil
 }
 
-func (e *Engine) AddSystem(sys System) {
-    e.systems = append(e.systems, sys)
-    sys.Init(e)
-}
-
-func (e *Engine) RunFrame(dt time.Duration) {
-    e.frameDelta = dt
-    for _, sys := range e.systems {
-        sys.Update(dt)
-    }
-    if e.World != nil {
-        e.World.Update(dt)
-    }
-}
-
+// Draw renders the current world state to the Ebiten screen.
 func (e *Engine) Draw(screen *ebiten.Image) {
-    if e.World != nil {
-        e.World.Draw(screen)
-    }
+	e.renderSystem.Draw(screen)
 }
 
-func (e *Engine) Shutdown() {
-    for _, sys := range e.systems {
-        sys.Shutdown()
-    }
-    if e.World != nil {
-        e.World.Shutdown()
-    }
+// Layout defines the logical game resolution.
+func (e *Engine) Layout(outsideWidth, outsideHeight int) (int, int) {
+	// Adjust these to your target virtual resolution
+	return 800, 600
 }
 
-func (e *Engine) Bus() *event.EventBus {
-    return e.bus
-}
